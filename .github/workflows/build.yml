@@ -97,30 +97,51 @@ jobs:
           import json
           import zipfile
 
-          jars = [j for j in glob.glob('build/libs/*.jar') if 'sources' not in j]
-          if not jars:
-              print('::error::No mod jar was produced')
+          jars = sorted(glob.glob('build/libs/*.jar'))
+          print('::notice::jars: ' + ', '.join(jars))
+
+          candidate = None
+          names = []
+
+          for path in jars:
+              if 'sources' in path:
+                  continue
+
+              with zipfile.ZipFile(path) as archive:
+                  entries = archive.namelist()
+
+                  if 'fabric.mod.json' not in entries:
+                      print(f'::notice::{path}: no fabric.mod.json ({len(entries)} entries)')
+                      continue
+
+                  meta = json.loads(archive.read('fabric.mod.json'))
+                  print(f'::notice::{path}: id={meta.get("id")} version={meta.get("version")} entries={len(entries)}')
+
+                  if meta.get('id') == 'easy_tp':
+                      candidate = (path, meta)
+                      names = entries
+                      break
+
+          if candidate is None:
+              print('::error::No remapped Easy TP jar with fabric.mod.json was produced')
               raise SystemExit(1)
 
-          jar = jars[0]
-          with zipfile.ZipFile(jar) as archive:
-              names = archive.namelist()
-              meta = json.loads(archive.read('fabric.mod.json'))
-              icon = meta.get('icon')
-              checks = {
-                  'id': meta.get('id') == 'easy_tp',
-                  'name': meta.get('name') == 'Easy TP',
-                  'version': meta.get('version') == '1.0.0',
-                  'environment': meta.get('environment') == 'client',
-                  'entrypoint': 'com.nebrion.easytp.EasyTPClient' in meta.get('entrypoints', {}).get('client', []),
-                  'icon-file': bool(icon) and icon in names,
-                  'main-class': 'com.nebrion.easytp.EasyTPClient.class' in names,
-                  'no-mixins': not meta.get('mixins'),
-                  'minecraft-depends': 'minecraft' in meta.get('depends', {}),
-              }
+          path, meta = candidate
+          icon = meta.get('icon')
+          checks = {
+              'id': meta.get('id') == 'easy_tp',
+              'name': meta.get('name') == 'Easy TP',
+              'version': meta.get('version') == '1.0.0',
+              'environment': meta.get('environment') == 'client',
+              'entrypoint': 'com.nebrion.easytp.EasyTPClient' in meta.get('entrypoints', {}).get('client', []),
+              'icon-file': bool(icon) and icon in names,
+              'main-class': any(entry.endswith('com/nebrion/easytp/EasyTPClient.class') for entry in names),
+              'no-mixins': not meta.get('mixins'),
+              'minecraft-depends': 'minecraft' in meta.get('depends', {}),
+          }
 
           failed = [key for key, ok in checks.items() if not ok]
-          print(f'::notice::jar {jar}: {len(names)} entries, metadata checks passed: {len(checks) - len(failed)}/{len(checks)}')
+          print(f'::notice::{path}: {len(names)} entries, checks passed {len(checks) - len(failed)}/{len(checks)}')
 
           if failed:
               print('::error::jar metadata checks failed: ' + ', '.join(failed))
