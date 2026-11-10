@@ -34,16 +34,34 @@ jobs:
         run: |
           python3 - <<'PY'
           import re
+
           try:
               lines = open('build.log', errors='replace').read().splitlines()
           except OSError:
               lines = []
 
-          errors = [l for l in lines if re.search(r'error:|\.java:\d+|Could not|FAILURE:|Caused by', l)]
-          picked = errors[:40] if errors else lines[-40:]
+          detail_prefixes = ('symbol:', 'location:', 'required:', 'found:', 'reason:', '^', 'note:')
+          blocks = []
+          index = 0
 
-          for line in picked:
-              safe = line.replace('\r', ' ').replace('%', '%25').replace('\n', ' ')[:900]
+          while index < len(lines):
+              line = lines[index]
+              if re.search(r'error:', line):
+                  block = [line.strip()]
+                  look = index + 1
+                  while look < len(lines) and lines[look].strip().startswith(detail_prefixes):
+                      block.append(lines[look].strip())
+                      look += 1
+                  blocks.append(' | '.join(block))
+                  index = look
+              else:
+                  index += 1
+
+          if not blocks:
+              blocks = [l.strip() for l in lines[-40:] if l.strip()]
+
+          for block in blocks[:40]:
+              safe = block.replace('\r', ' ').replace('%', '%25').replace('\n', ' ')[:1200]
               print('::error::' + safe)
           PY
 

@@ -79,7 +79,7 @@ public final class ConfigManager {
 
 			root = migrate(parsed);
 			EasyTP.LOGGER.info("Loaded Easy TP configuration ({} server profile(s))", root.servers.size());
-		} catch (IOException | JsonSyntaxException | RuntimeException exception) {
+		} catch (IOException | RuntimeException exception) {
 			EasyTP.LOGGER.error("Easy TP configuration is unreadable, starting from defaults", exception);
 			backupCorrupted(file);
 			root = new EasyTpConfig();

@@ -54,13 +54,13 @@ public final class PlayerManager {
 				continue;
 			}
 
-			UUID uuid = entry.getProfile().getId();
+			UUID uuid = entry.getProfile().id();
 
 			if (uuid == null) {
 				continue;
 			}
 
-			String name = entry.getProfile().getName();
+			String name = entry.getProfile().name();
 
 			if (name == null || name.isBlank()) {
 				name = "Unknown";
