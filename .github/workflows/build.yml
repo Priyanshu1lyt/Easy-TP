@@ -135,7 +135,7 @@ jobs:
               'environment': meta.get('environment') == 'client',
               'entrypoint': 'com.nebrion.easytp.EasyTPClient' in meta.get('entrypoints', {}).get('client', []),
               'icon-file': bool(icon) and icon in names,
-              'main-class': any(entry.endswith('com/nebrion/easytp/EasyTPClient.class') for entry in names),
+              'main-class': 'com/nebrion/easytp/EasyTPClient.class' in names,
               'no-mixins': not meta.get('mixins'),
               'minecraft-depends': 'minecraft' in meta.get('depends', {}),
           }
@@ -144,8 +144,12 @@ jobs:
           print(f'::notice::{path}: {len(names)} entries, checks passed {len(checks) - len(failed)}/{len(checks)}')
 
           if failed:
+              sample = ', '.join(entry for entry in names if entry.endswith('.class'))[:600]
+              print('::notice::class entries: ' + sample)
               print('::error::jar metadata checks failed: ' + ', '.join(failed))
               raise SystemExit(1)
+
+          print('::notice::entrypoint class present at com/nebrion/easytp/EasyTPClient.class')
           PY
 
       - name: Upload mod jar
