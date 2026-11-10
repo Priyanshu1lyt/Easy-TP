@@ -25,7 +25,27 @@ jobs:
           gradle-version: "9.1.0"
 
       - name: Build
-        run: gradle build --stacktrace --no-daemon
+        run: |
+          set -o pipefail
+          gradle build --stacktrace --no-daemon --console=plain 2>&1 | tee build.log
+
+      - name: Report build problems as annotations
+        if: failure()
+        run: |
+          python3 - <<'PY'
+          import re
+          try:
+              lines = open('build.log', errors='replace').read().splitlines()
+          except OSError:
+              lines = []
+
+          errors = [l for l in lines if re.search(r'error:|\.java:\d+|Could not|FAILURE:|Caused by', l)]
+          picked = errors[:40] if errors else lines[-40:]
+
+          for line in picked:
+              safe = line.replace('\r', ' ').replace('%', '%25').replace('\n', ' ')[:900]
+              print('::error::' + safe)
+          PY
 
       - name: Upload mod jar
         uses: actions/upload-artifact@v4
