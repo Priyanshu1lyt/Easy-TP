@@ -1,0 +1,28 @@
+{
+	"schemaVersion": 1,
+	"id": "easy_tp",
+	"version": "${version}",
+	"name": "Easy TP",
+	"description": "A client-side teleportation and player management dashboard for server operators. Browse online players, build colour-coded teams and teleport players or teams to another player or to custom coordinates - entirely from a modern GUI.",
+	"authors": [
+		"Nebrion"
+	],
+	"contact": {
+		"homepage": "https://github.com/Priyanshu1lyt/Easy-TP",
+		"sources": "https://github.com/Priyanshu1lyt/Easy-TP"
+	},
+	"license": "MIT",
+	"icon": "assets/easy_tp/icon.png",
+	"environment": "client",
+	"entrypoints": {
+		"client": [
+			"com.nebrion.easytp.EasyTPClient"
+		]
+	},
+	"depends": {
+		"fabricloader": ">=0.17.0",
+		"minecraft": "~1.21.11",
+		"java": ">=21",
+		"fabric-api": "*"
+	}
+}

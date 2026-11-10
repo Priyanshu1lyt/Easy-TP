@@ -1,0 +1,160 @@
+name: build
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "9.1.0"
+
+      - name: Build
+        run: |
+          set -o pipefail
+          gradle build --stacktrace --no-daemon --console=plain 2>&1 | tee build.log
+
+      - name: Report build problems as annotations
+        if: failure()
+        run: |
+          python3 - <<'PY'
+          import re
+
+          try:
+              lines = open('build.log', errors='replace').read().splitlines()
+          except OSError:
+              lines = []
+
+          detail_prefixes = ('symbol:', 'location:', 'required:', 'found:', 'reason:', '^', 'note:')
+          blocks = []
+          index = 0
+
+          while index < len(lines):
+              line = lines[index]
+              if re.search(r'error:', line):
+                  block = [line.strip()]
+                  look = index + 1
+                  while look < len(lines) and lines[look].strip().startswith(detail_prefixes):
+                      block.append(lines[look].strip())
+                      look += 1
+                  blocks.append(' | '.join(block))
+                  index = look
+              else:
+                  index += 1
+
+          if not blocks:
+              blocks = [l.strip() for l in lines[-40:] if l.strip()]
+
+          for block in blocks[:40]:
+              safe = block.replace('\r', ' ').replace('%', '%25').replace('\n', ' ')[:1200]
+              print('::error::' + safe)
+          PY
+
+      - name: Summarise tests
+        if: always()
+        run: |
+          python3 - <<'PY'
+          import glob
+          import xml.etree.ElementTree as ET
+
+          files = glob.glob('build/test-results/test/*.xml')
+          total = failures = errors = skipped = 0
+
+          for path in files:
+              try:
+                  root = ET.parse(path).getroot()
+              except ET.ParseError:
+                  continue
+              total += int(root.get('tests', 0))
+              failures += int(root.get('failures', 0))
+              errors += int(root.get('errors', 0))
+              skipped += int(root.get('skipped', 0))
+
+          print(f'::notice::JUnit: {total} tests, {failures} failures, {errors} errors, {skipped} skipped ({len(files)} classes)')
+          if total == 0:
+              print('::error::No JUnit tests were executed')
+          PY
+
+      - name: Verify the built jar
+        run: |
+          python3 - <<'PY'
+          import glob
+          import json
+          import zipfile
+
+          jars = sorted(glob.glob('build/libs/*.jar'))
+          print('::notice::jars: ' + ', '.join(jars))
+
+          candidate = None
+          names = []
+
+          for path in jars:
+              if 'sources' in path:
+                  continue
+
+              with zipfile.ZipFile(path) as archive:
+                  entries = archive.namelist()
+
+                  if 'fabric.mod.json' not in entries:
+                      print(f'::notice::{path}: no fabric.mod.json ({len(entries)} entries)')
+                      continue
+
+                  meta = json.loads(archive.read('fabric.mod.json'))
+                  print(f'::notice::{path}: id={meta.get("id")} version={meta.get("version")} entries={len(entries)}')
+
+                  if meta.get('id') == 'easy_tp':
+                      candidate = (path, meta)
+                      names = entries
+                      break
+
+          if candidate is None:
+              print('::error::No remapped Easy TP jar with fabric.mod.json was produced')
+              raise SystemExit(1)
+
+          path, meta = candidate
+          icon = meta.get('icon')
+          checks = {
+              'id': meta.get('id') == 'easy_tp',
+              'name': meta.get('name') == 'Easy TP',
+              'version': meta.get('version') == '1.0.0',
+              'environment': meta.get('environment') == 'client',
+              'entrypoint': 'com.nebrion.easytp.EasyTPClient' in meta.get('entrypoints', {}).get('client', []),
+              'icon-file': bool(icon) and icon in names,
+              'main-class': 'com/nebrion/easytp/EasyTPClient.class' in names,
+              'no-mixins': not meta.get('mixins'),
+              'minecraft-depends': 'minecraft' in meta.get('depends', {}),
+          }
+
+          failed = [key for key, ok in checks.items() if not ok]
+          print(f'::notice::{path}: {len(names)} entries, checks passed {len(checks) - len(failed)}/{len(checks)}')
+
+          if failed:
+              sample = ', '.join(entry for entry in names if entry.endswith('.class'))[:600]
+              print('::notice::class entries: ' + sample)
+              print('::error::jar metadata checks failed: ' + ', '.join(failed))
+              raise SystemExit(1)
+
+          print('::notice::entrypoint class present at com/nebrion/easytp/EasyTPClient.class')
+          PY
+
+      - name: Upload mod jar
+        uses: actions/upload-artifact@v4
+        with:
+          name: easy-tp-jar
+          path: build/libs/*.jar
+          if-no-files-found: error
