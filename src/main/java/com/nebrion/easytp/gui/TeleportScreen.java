@@ -71,7 +71,7 @@ public final class TeleportScreen extends EasyTpScreen {
 		int teams = TeamManager.get().count();
 
 		if (teams == 0) {
-			return 0;
+			return 16;
 		}
 
 		return Math.min(2, (teams * 60) / Math.max(1, leftW) + 1) * 16;
@@ -175,17 +175,6 @@ public final class TeleportScreen extends EasyTpScreen {
 			}
 		});
 
-		int summaryY = tabY + 22;
-		Theme.text(context, textRenderer, "TARGETS", rightX + 8, summaryY, Theme.TEXT_MUTED);
-		Theme.textRight(context, textRenderer, String.valueOf(teleports.resolveTargets().size()),
-				rightX + rightW - 8, summaryY, Theme.TEXT);
-
-		String teamLine = teams.selectedCount() == 0
-				? "none"
-				: String.join(", ", teleports.selectedTeamNames());
-		Theme.text(context, textRenderer, "TEAMS", rightX + 8, summaryY + 12, Theme.TEXT_MUTED);
-		Theme.textRight(context, textRenderer, trim(teamLine, rightW - 70), rightX + rightW - 8, summaryY + 12, Theme.TEXT_DIM);
-
 		// Action buttons pinned to the bottom of the card.
 		int actionBottom = rightY + rightH - 8;
 		int actionHeight = 17;
@@ -193,34 +182,56 @@ public final class TeleportScreen extends EasyTpScreen {
 		int primaryW = rightW - 16;
 		int halfW = (rightW - 16 - gap) / 2;
 
-		int y = actionBottom - actionHeight;
-		button(context, "REVIEW & TELEPORT", rightX + 8, y, primaryW, actionHeight, ButtonKind.PRIMARY,
+		int reviewY = actionBottom - actionHeight;
+		int playersY = reviewY - (actionHeight + gap);
+		int teamsY = playersY - (actionHeight + gap);
+		int clearY = teamsY - (actionHeight + gap);
+
+		int summaryY = tabY + 22;
+
+		if (summaryY + 26 < clearY - 4) {
+			Theme.text(context, textRenderer, "TARGETS", rightX + 8, summaryY, Theme.TEXT_MUTED);
+			Theme.textRight(context, textRenderer, String.valueOf(teleports.resolveTargets().size()),
+					rightX + rightW - 8, summaryY, Theme.TEXT);
+
+			String teamLine = teams.selectedCount() == 0
+					? "none"
+					: String.join(", ", teleports.selectedTeamNames());
+			Theme.text(context, textRenderer, "TEAMS", rightX + 8, summaryY + 12, Theme.TEXT_MUTED);
+			Theme.textRight(context, textRenderer, trim(teamLine, rightW - 70), rightX + rightW - 8, summaryY + 12,
+					Theme.TEXT_DIM);
+		}
+
+		button(context, "REVIEW & TELEPORT", rightX + 8, reviewY, primaryW, actionHeight, ButtonKind.PRIMARY,
 				() -> review(teleports.resolveTargets()));
 
-		y -= actionHeight + gap;
-		button(context, "TP ALL PLAYERS", rightX + 8, y, halfW, actionHeight, ButtonKind.SECONDARY,
-				() -> review(allOnline()));
-		button(context, "TP SELECTED PLAYERS", rightX + 8 + halfW + gap, y, halfW, actionHeight, ButtonKind.SECONDARY,
-				() -> review(players.selectedIds()));
+		if (playersY > tabY + actionHeight) {
+			button(context, "TP ALL PLAYERS", rightX + 8, playersY, halfW, actionHeight, ButtonKind.SECONDARY,
+					() -> review(allOnline()));
+			button(context, "TP SELECTED PLAYERS", rightX + 8 + halfW + gap, playersY, halfW, actionHeight,
+					ButtonKind.SECONDARY, () -> review(players.selectedIds()));
+		}
 
-		y -= actionHeight + gap;
-		button(context, "TP SELECTED TEAMS", rightX + 8, y, halfW, actionHeight, ButtonKind.SECONDARY,
-				() -> review(teamMembers()));
-		button(context, "CHANGE DESTINATION", rightX + 8 + halfW + gap, y, halfW, actionHeight, ButtonKind.GHOST,
-				() -> {
-					if (client != null) {
-						client.setScreen(destination != null && destination.isCoordinates()
-								? new CoordinateScreen(this)
-								: new DestinationScreen(this));
-					}
-				});
+		if (teamsY > tabY + actionHeight) {
+			button(context, "TP SELECTED TEAMS", rightX + 8, teamsY, halfW, actionHeight, ButtonKind.SECONDARY,
+					() -> review(teamMembers()));
+			button(context, "CHANGE DESTINATION", rightX + 8 + halfW + gap, teamsY, halfW, actionHeight,
+					ButtonKind.GHOST, () -> {
+						if (client != null) {
+							client.setScreen(destination != null && destination.isCoordinates()
+									? new CoordinateScreen(this)
+									: new DestinationScreen(this));
+						}
+					});
+		}
 
-		y -= actionHeight + gap;
-		button(context, "CLEAR SELECTION", rightX + 8, y, primaryW, actionHeight, ButtonKind.GHOST, () -> {
-			players.clearSelection();
-			teams.clearSelection();
-			Toasts.info("Selection cleared.");
-		});
+		if (clearY > tabY + actionHeight) {
+			button(context, "CLEAR SELECTION", rightX + 8, clearY, primaryW, actionHeight, ButtonKind.GHOST, () -> {
+				players.clearSelection();
+				teams.clearSelection();
+				Toasts.info("Selection cleared.");
+			});
+		}
 	}
 
 	private void drawTeamChips(DrawContext context, int y) {

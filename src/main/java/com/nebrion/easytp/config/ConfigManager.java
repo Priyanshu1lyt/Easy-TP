@@ -141,10 +141,6 @@ public final class ConfigManager {
 
 	/** Saves at the end of the current tick at the earliest, so bursts of edits write only once. */
 	public void requestSave() {
-		if (!root.settings.autoSaveTeams) {
-			return;
-		}
-
 		if (saveQueued) {
 			return;
 		}

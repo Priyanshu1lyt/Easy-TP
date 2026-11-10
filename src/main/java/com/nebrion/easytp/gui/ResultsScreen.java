@@ -102,7 +102,8 @@ public final class ResultsScreen extends EasyTpScreen {
 				listX + 8, listY + listH - 11, Theme.TEXT_MUTED);
 
 		int footerY = contentY + contentH - 18;
-		button(context, "RETRY FAILED", contentX, footerY, 100, 18, ButtonKind.SECONDARY,
+		int footerW = Math.max(52, (contentW - GAP * 3) / 4);
+		button(context, "RETRY FAILED", contentX, footerY, footerW, 18, ButtonKind.SECONDARY,
 				failed + unconfirmed > 0, () -> {
 					TeleportManager.get().retryFailed(client);
 					scroll = 0;
@@ -111,24 +112,26 @@ public final class ResultsScreen extends EasyTpScreen {
 						client.setScreen(new TeleportScreen(this));
 					}
 				});
-		button(context, "NEW TELEPORT", contentX + 106, footerY, 110, 18, ButtonKind.PRIMARY, () -> {
+		button(context, "NEW TELEPORT", contentX + footerW + GAP, footerY, footerW, 18, ButtonKind.PRIMARY, () -> {
 			if (client != null) {
 				client.setScreen(new TeleportScreen(this));
 			}
 		});
-		button(context, "DASHBOARD", contentX + 222, footerY, 90, 18, ButtonKind.GHOST, () -> {
+		button(context, "DASHBOARD", contentX + (footerW + GAP) * 2, footerY, footerW, 18, ButtonKind.GHOST, () -> {
 			if (client != null) {
 				client.setScreen(new MainDashboardScreen());
 			}
 		});
-		button(context, "CLOSE", contentX + 318, footerY, 70, 18, ButtonKind.GHOST, () -> {
+		button(context, "CLOSE", contentX + (footerW + GAP) * 3, footerY, footerW, 18, ButtonKind.GHOST, () -> {
 			if (client != null) {
 				client.setScreen(null);
 			}
 		});
 
-		Theme.text(context, textRenderer, "Easy TP · " + EasyTP.serverLabel(client), contentX + contentW,
-				footerY + 5, Theme.TEXT_MUTED);
+		if (contentW > 470) {
+			Theme.textRight(context, textRenderer, "Easy TP · " + EasyTP.serverLabel(client), contentX + contentW,
+					footerY + 5, Theme.TEXT_MUTED);
+		}
 	}
 
 	private void drawStat(DrawContext context, int x, int y, int w, String label, int value, int color) {

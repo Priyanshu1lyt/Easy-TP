@@ -212,9 +212,8 @@ public final class TeleportManager {
 				continue;
 			}
 
+			// The destination player is never part of its own teleport target list.
 			if (target.isPlayer() && target.playerId().equals(id)) {
-				results.add(new TeleportResult(id, data.name(), "tp -", TeleportResult.Status.FAILED,
-						"Destination is excluded from the target list."));
 				continue;
 			}
 
@@ -350,8 +349,12 @@ public final class TeleportManager {
 			} else if (firstError != null) {
 				result.update(TeleportResult.Status.FAILED, "Server rejected the command: " + firstError);
 			} else {
-				result.update(TeleportResult.Status.FAILED,
-						"Player did not reach the destination (still " + String.format(Locale.ROOT, "%.0f", distance) + " blocks away).");
+				// No server error was seen, so the command may still have been rejected silently.
+				// Report UNCONFIRMED instead of pretending the teleport either worked or failed.
+				result.update(TeleportResult.Status.UNCONFIRMED,
+						"Could not verify the teleport: the player is still "
+								+ String.format(Locale.ROOT, "%.0f", distance)
+								+ " blocks from the destination.");
 			}
 		}
 	}

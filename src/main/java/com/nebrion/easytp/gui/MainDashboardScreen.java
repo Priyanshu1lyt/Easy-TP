@@ -48,7 +48,7 @@ public final class MainDashboardScreen extends EasyTpScreen {
 		drawStatCard(context, contentX, top, cardWidth, cardHeight, "ONLINE PLAYERS",
 				String.valueOf(players.onlineCount()), Theme.BLUE, "in this server");
 		drawStatCard(context, contentX + (cardWidth + GAP), top, cardWidth, cardHeight, "SELECTED",
-				String.valueOf(players.selectedCount() + teamSelectedMembers()), Theme.GREEN, "ready to teleport");
+				String.valueOf(teleports.resolveTargets().size()), Theme.GREEN, "ready to teleport");
 		drawStatCard(context, contentX + (cardWidth + GAP) * 2, top, cardWidth, cardHeight, "TEAMS",
 				String.valueOf(teams.count()), Theme.PURPLE, teams.selectedCount() + " selected");
 		drawStatCard(context, contentX + (cardWidth + GAP) * 3, top, cardWidth, cardHeight, "DESTINATION",
@@ -85,16 +85,6 @@ public final class MainDashboardScreen extends EasyTpScreen {
 				+ CoordinateManager.currentDimensionLabel(client);
 		Theme.textRight(context, textRenderer, trim(server, Math.max(80, contentW / 3)), contentX + contentW,
 				contentY + 4, Theme.TEXT_DIM);
-	}
-
-	private int teamSelectedMembers() {
-		int total = 0;
-
-		for (String id : TeamManager.get().selectedIds()) {
-			total += TeamManager.get().byId(id).map(team -> team.onlineMemberCount()).orElse(0);
-		}
-
-		return total;
 	}
 
 	private void drawStatCard(DrawContext context, int x, int y, int w, int h, String label, String value, int color, String hint) {
