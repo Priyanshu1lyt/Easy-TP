@@ -61,13 +61,7 @@ public final class EasyTP {
 		}
 
 		if (client.isInSingleplayer()) {
-			String world = "world";
-
-			if (client.world != null) {
-				world = client.world.getRegistryKey().getValue().getPath();
-			}
-
-			return "singleplayer:" + world;
+			return "singleplayer:" + singleplayerWorldName(client);
 		}
 
 		ServerInfo info = client.getCurrentServerEntry();
@@ -79,6 +73,26 @@ public final class EasyTP {
 		return "multiplayer:unknown";
 	}
 
+	/**
+	 * Name of the integrated server's save, so that team storage stays stable while travelling between
+	 * dimensions in singleplayer. Falls back to a shared profile when it cannot be resolved.
+	 */
+	private static String singleplayerWorldName(MinecraftClient client) {
+		try {
+			if (client.getServer() != null) {
+				String level = client.getServer().getSaveProperties().getLevelName();
+
+				if (level != null && !level.isBlank()) {
+					return level;
+				}
+			}
+		} catch (Throwable throwable) {
+			LOGGER.debug("Could not resolve the singleplayer world name", throwable);
+		}
+
+		return "shared";
+	}
+
 	/** Human readable label of the current server/world, used by the dashboard chrome. */
 	public static String serverLabel(MinecraftClient client) {
 		if (client == null) {
@@ -86,7 +100,8 @@ public final class EasyTP {
 		}
 
 		if (client.isInSingleplayer()) {
-			return "Singleplayer";
+			String world = singleplayerWorldName(client);
+			return "shared".equals(world) ? "Singleplayer" : "Singleplayer · " + world;
 		}
 
 		ServerInfo info = client.getCurrentServerEntry();
