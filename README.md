@@ -85,8 +85,16 @@ Requires **Java 21**.
 The jar is written to `build/libs/easy_tp-1.0.0.jar`. (A pre-generated Gradle wrapper is included;
 use `gradle build` if you prefer your own Gradle 9.x.)
 
-CI: every push builds the mod with GitHub Actions (`.github/workflows/build.yml`) and uploads the jar
-as the `easy-tp-jar` artifact.
+CI: every push builds the mod with GitHub Actions (`.github/workflows/build.yml`), runs the JUnit logic
+tests, checks the produced jar's metadata (id, version, client environment, entrypoint, icon, no mixins)
+and uploads it as the `easy-tp-jar` artifact.
+
+Tests cover coordinate parsing and bounds, command generation (including cross-dimension wrapping),
+colour parsing/contrast, team serialisation and settings defaults:
+
+```bash
+./gradlew test
+```
 
 ---
 
@@ -142,9 +150,10 @@ No mixins are used; the mod only relies on public Fabric API events and vanilla 
 ## Status
 
 * Compiles cleanly against Minecraft 1.21.11 (Yarn `1.21.11+build.3`, Fabric API `0.141.6+1.21.11`,
-  Fabric Loader `0.17.3`, Java 21) — see the CI badge/artifacts.
-* In-game behaviour has been implemented to spec but could not be verified in a running client in this
-  environment; the results screen is deliberately honest about anything the client cannot confirm.
+  Fabric Loader `0.17.3`, Java 21); the CI build produces `easy_tp-1.0.0.jar` and verifies its metadata.
+* Logic is unit-tested (coordinates, commands, colours, team storage, settings).
+* The GUI has not been launched inside a running Minecraft client in this environment, so visual layout
+  and in-game command behaviour are implemented to spec but not yet confirmed on a live server.
 
 ## License
 

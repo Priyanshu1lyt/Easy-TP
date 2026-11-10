@@ -84,8 +84,4 @@ public final class ModSettings {
 			default -> "Username (A-Z)";
 		};
 	}
-
-	public boolean onOff(boolean value) {
-		return value;
-	}
 }

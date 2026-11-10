@@ -65,6 +65,68 @@ jobs:
               print('::error::' + safe)
           PY
 
+      - name: Summarise tests
+        if: always()
+        run: |
+          python3 - <<'PY'
+          import glob
+          import xml.etree.ElementTree as ET
+
+          files = glob.glob('build/test-results/test/*.xml')
+          total = failures = errors = skipped = 0
+
+          for path in files:
+              try:
+                  root = ET.parse(path).getroot()
+              except ET.ParseError:
+                  continue
+              total += int(root.get('tests', 0))
+              failures += int(root.get('failures', 0))
+              errors += int(root.get('errors', 0))
+              skipped += int(root.get('skipped', 0))
+
+          print(f'::notice::JUnit: {total} tests, {failures} failures, {errors} errors, {skipped} skipped ({len(files)} classes)')
+          if total == 0:
+              print('::error::No JUnit tests were executed')
+          PY
+
+      - name: Verify the built jar
+        run: |
+          python3 - <<'PY'
+          import glob
+          import json
+          import zipfile
+
+          jars = [j for j in glob.glob('build/libs/*.jar') if 'sources' not in j]
+          if not jars:
+              print('::error::No mod jar was produced')
+              raise SystemExit(1)
+
+          jar = jars[0]
+          with zipfile.ZipFile(jar) as archive:
+              names = archive.namelist()
+              meta = json.loads(archive.read('fabric.mod.json'))
+              icon = meta.get('icon')
+              checks = {
+                  'id': meta.get('id') == 'easy_tp',
+                  'name': meta.get('name') == 'Easy TP',
+                  'version': meta.get('version') == '1.0.0',
+                  'environment': meta.get('environment') == 'client',
+                  'entrypoint': 'com.nebrion.easytp.EasyTPClient' in meta.get('entrypoints', {}).get('client', []),
+                  'icon-file': bool(icon) and icon in names,
+                  'main-class': 'com.nebrion.easytp.EasyTPClient.class' in names,
+                  'no-mixins': not meta.get('mixins'),
+                  'minecraft-depends': 'minecraft' in meta.get('depends', {}),
+              }
+
+          failed = [key for key, ok in checks.items() if not ok]
+          print(f'::notice::jar {jar}: {len(names)} entries, metadata checks passed: {len(checks) - len(failed)}/{len(checks)}')
+
+          if failed:
+              print('::error::jar metadata checks failed: ' + ', '.join(failed))
+              raise SystemExit(1)
+          PY
+
       - name: Upload mod jar
         uses: actions/upload-artifact@v4
         with:
